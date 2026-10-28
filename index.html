@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AGENTRA SalonFlow</title>
+  <style>
+    :root {
+      font-family: Inter, Arial, sans-serif;
+      color: #282337;
+      background: #f7f4fb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 14px; }
+    .app {
+      max-width: 650px;
+      margin: auto;
+      background: white;
+      border: 1px solid #e9e1f0;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 12px 45px #33204412;
+    }
+    header {
+      background: linear-gradient(135deg, #261936, #65458c);
+      color: white;
+      padding: 24px;
+    }
+    .brand { font-size: 12px; letter-spacing: 3px; opacity: .8; }
+    h1 { margin: 9px 0; font-size: 27px; }
+    header p { margin: 0; color: #eee3fa; line-height: 1.5; }
+    #messages {
+      padding: 20px;
+      height: 310px;
+      overflow-y: auto;
+      background: #fcfaff;
+    }
+    .bubble {
+      white-space: pre-line;
+      max-width: 90%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border-radius: 15px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .bot { background: #eee6f7; border-bottom-left-radius: 4px; }
+    .user {
+      background: #4f3570; color: white;
+      margin-left: auto; border-bottom-right-radius: 4px;
+    }
+    .chatbar { display: flex; gap: 8px; padding: 14px; }
+    input, select, button {
+      font: inherit; border-radius: 10px; padding: 12px;
+    }
+    input, select {
+      min-width: 0; width: 100%; border: 1px solid #ded5e8;
+      background: white; color: #282337;
+    }
+    button {
+      border: 0; background: #65458c; color: white;
+      cursor: pointer; font-weight: 600;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .chatbar input { flex: 1; }
+    .booking { padding: 20px; border-top: 1px solid #eee6f3; }
+    h2 { font-size: 18px; margin: 0 0 7px; }
+    .hint { font-size: 13px; color: #71677c; line-height: 1.5; }
+    form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    form button, .full { grid-column: 1 / -1; }
+    #status { font-size: 13px; line-height: 1.5; }
+    footer { padding: 14px 20px; font-size: 11px; color: #81778c; }
+    @media (max-width: 450px) {
+      form { grid-template-columns: 1fr; }
+      form button, .full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">AGENTRA · BUSINESS AUTOMATION</div>
+      <h1>Glow Studio ✨</h1>
+      <p>Your salon enquiry assistant. Ask about services,
+         prices, timings or request an appointment.</p>
+    </header>
+
+    <section id="messages" aria-live="polite">
+      <div class="bubble bot">
+        Hi! Welcome to Glow Studio. How can I help you today?
+        Try asking “What are your prices?” or “I want to book”.
+      </div>
+    </section>
+
+    <form class="chatbar" id="chatForm">
+      <input id="message" placeholder="Ask us anything..."
+             maxlength="1000" required>
+      <button id="send" type="submit">Send</button>
+    </form>
+
+    <section class="booking">
+      <h2>Request an appointment</h2>
+      <p class="hint">
+        Submit your preferred slot. This is a demo request,
+        not a confirmed appointment.
+      </p>
+      <form id="bookingForm">
+        <input name="name" placeholder="Your name" maxlength="100"
+               autocomplete="name" required>
+        <input name="phone" placeholder="Phone number" type="tel"
+               maxlength="20" autocomplete="tel" required>
+        <select name="service" required>
+          <option value="">Choose a service</option>
+          <option>Haircut</option>
+          <option>Facial</option>
+          <option>Manicure</option>
+          <option>Hair spa</option>
+        </select>
+        <input name="date" placeholder="Preferred date (e.g. 5 Nov)"
+               maxlength="30" required>
+        <input name="time" placeholder="Preferred time (e.g. 3 PM)"
+               maxlength="30" required>
+        <button type="submit">Send booking request</button>
+      </form>
+      <p id="status" role="status"></p>
+    </section>
+
+    <footer>
+      AGENTRA SalonFlow · Prototype with sample salon information.
+      Prices and availability must be verified by the salon.
+    </footer>
+  </main>
+
+  <script>
+    const messages = document.getElementById("messages");
+
+    function addMessage(text, who) {
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + who;
+      bubble.textContent = text;
+      messages.appendChild(bubble);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    document.getElementById("chatForm").addEventListener(
+      "submit", async (event) => {
+        event.preventDefault();
+        const input = document.getElementById("message");
+        const button = document.getElementById("send");
+        const message = input.value.trim();
+        if (!message) return;
+
+        addMessage(message, "user");
+        input.value = "";
+        button.disabled = true;
+
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message})
+          });
+          if (!response.ok) throw new Error("Chat request failed");
+          const data = await response.json();
+          addMessage(data.reply, "bot");
+        } catch (error) {
+          addMessage("Connection error. Please check that the server is running.", "bot");
+        } finally {
+          button.disabled = false;
+          input.focus();
+        }
+      }
+    );
+
+    document.getElementById("bookingForm").addEventListener(
+      "submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector("button");
+        const status = document.getElementById("status");
+        button.disabled = true;
+        status.textContent = "Sending request...";
+
+        const booking = Object.fromEntries(new FormData(form).entries());
+
+        try {
+          const response = await fetch("/api/bookings", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(booking)
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error("Please check your details.");
+          status.textContent = data.message;
+          form.reset();
+        } catch (error) {
+          status.textContent = error.message || "Could not send the request.";
+        } finally {
+          button.disabled = false;
+        }
+      }
+    );
+  </script>
+</body>
+</html>
